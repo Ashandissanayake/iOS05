@@ -1,17 +1,35 @@
-//
-//  ios_practicalApp.swift
-//  ios_practical
-//
-//  Created by student5 on 2026-06-13.
-//
-
 import SwiftUI
 
 @main
-struct ios_practicalApp: App {
+struct PlayHubApp: App {
+    @StateObject private var statsViewModel = StatsVM()
+    @StateObject private var locationService = LocationService()
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            TabView {
+                HomeTab()
+                    .tabItem {
+                        Label("Home", systemImage: "gamecontroller.fill")
+                    }
+                
+                StatsTab()
+                    .tabItem {
+                        Label("Stats", systemImage: "chart.bar.xaxis")
+                    }
+                
+                MapTab()
+                    .tabItem {
+                        Label("Map Log", systemImage: "map.fill")
+                    }
+                
+                SettingsTab()
+                    .tabItem {
+                        Label("Settings", systemImage: "gearshape.fill")
+                    }
+            }
+            .environmentObject(statsViewModel)
+            .environmentObject(locationService)
         }
     }
 }
