@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreLocation
 
 struct QuizRushView: View {
     @StateObject private var viewModel = QuizRushVM()

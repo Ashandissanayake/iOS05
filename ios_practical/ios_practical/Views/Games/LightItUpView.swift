@@ -1,4 +1,5 @@
 import SwiftUI
+internal import _LocationEssentials
 
 struct LightItUpView: View {
     @StateObject private var viewModel = LightItUpVM()

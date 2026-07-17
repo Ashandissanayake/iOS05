@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Combine
 
 enum QuizState {
     case loading
@@ -7,6 +8,7 @@ enum QuizState {
     case failed
 }
 
+@MainActor
 class QuizRushVM: ObservableObject {
     @Published var state: QuizState = .loading
     @Published var currentIndex = 0
@@ -18,24 +20,18 @@ class QuizRushVM: ObservableObject {
     private let api = TriviaAPI()
     
     func loadQuestions() async {
-        DispatchQueue.main.sync {
-            self.state = .loading
-            self.isGameOver = false
-            self.score = 0
-            self.streak = 0
-            self.currentIndex = 0
-        }
+        state = .loading
+        isGameOver = false
+        score = 0
+        streak = 0
+        currentIndex = 0
         
         do {
             let questions = try await api.fetchQuestions()
-            DispatchQueue.main.async {
-                self.state = .loaded(questions)
-                self.prepareAnswers(for: questions[0])
-            }
+            state = .loaded(questions)
+            prepareAnswers(for: questions[0])
         } catch {
-            DispatchQueue.main.async {
-                self.state = .failed
-            }
+            state = .failed
         }
     }
     

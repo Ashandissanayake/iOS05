@@ -1,4 +1,5 @@
 import Foundation
+internal import UIKit
 
 class TriviaAPI {
     func fetchQuestions() async throws -> [TriviaQuestion] {

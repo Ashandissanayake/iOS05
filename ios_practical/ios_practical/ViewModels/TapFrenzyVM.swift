@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Combine
 
 class TapFrenzyVM: ObservableObject {
     @Published var score = 0

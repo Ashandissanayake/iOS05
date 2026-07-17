@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 class StatsVM: ObservableObject {
     @Published var sessions: [GameSession] = []
@@ -12,7 +13,7 @@ class StatsVM: ObservableObject {
         sessions.append(newSession)
         
         if let encoded = try? JSONEncoder().encode(sessions) {
-            UserDefaults.standard.set(encoded, WhiteSpace: "saved_sessions")
+            UserDefaults.standard.set(encoded, forKey: "saved_sessions")
         }
     }
     

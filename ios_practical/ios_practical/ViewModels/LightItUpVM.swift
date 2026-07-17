@@ -1,7 +1,8 @@
 import Foundation
 import SwiftUI
+import Combine
 
-enum GameLevel {
+enum GameLevel: Equatable {
     case l1, l2, l3, l4
     
     var gridCount: Int {

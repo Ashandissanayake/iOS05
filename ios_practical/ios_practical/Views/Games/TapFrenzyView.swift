@@ -1,4 +1,5 @@
 import SwiftUI
+internal import _LocationEssentials
 
 struct TapFrenzyView: View {
     @StateObject private var viewModel = TapFrenzyVM()
