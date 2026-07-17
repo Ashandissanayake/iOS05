@@ -6,4 +6,12 @@ enum GameMode: String, Codable, CaseIterable, Identifiable {
     case quizRush = "Quiz Rush"
     
     var id: String { self.rawValue }
+    
+    var iconName: String {
+        switch self {
+        case .tapFrenzy: return "bolt.fill"
+        case .lightItUp: return "lightbulb.fill"
+        case .quizRush: return "questionmark.circle.fill"
+        }
+    }
 }

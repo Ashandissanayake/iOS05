@@ -109,11 +109,16 @@ class LightItUpVM: ObservableObject {
     }
     
     private func handleMissedTick() {
+        guard isPlaying else { return }
+        
         // Deduct a life if a lit card wasn't tapped before window timed out
         let missedAny = cards.contains { $0.isLit }
         if missedAny {
             reduceLife()
         }
+        
+        // Game may have just ended inside reduceLife() — don't restart the tick loop
+        guard isPlaying else { return }
         triggerNextTick()
     }
     
