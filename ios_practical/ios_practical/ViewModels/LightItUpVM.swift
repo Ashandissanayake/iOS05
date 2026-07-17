@@ -1,135 +1,159 @@
-import Foundation
 import SwiftUI
 import Combine
 
-enum GameLevel: Equatable {
-    case l1, l2, l3, l4
-    
-    var gridCount: Int {
-        switch self {
-        case .l1: return 3
-        case .l2: return 4
-        case .l3: return 6
-        case .l4: return 9
-        }
-    }
-    
-    var activeCount: Int {
-        switch self {
-        case .l1, .l2, .l3: return 1
-        case .l4: return 2
-        }
-    }
-    
-    var interval: TimeInterval {
-        switch self {
-        case .l1: return 1.5
-        case .l2: return 1.2
-        case .l3: return 1.0
-        case .l4: return 0.8
-        }
-    }
-    
-    var glowColor: Color {
-        switch self {
-        case .l1: return .green
-        case .l2: return .blue
-        case .l3: return .orange
-        case .l4: return .purple
-        }
-    }
-}
-
 class LightItUpVM: ObservableObject {
-    @Published var score = 0
-    @Published var lives = 3
-    @Published var timeRemaining = 60
-    @Published var isGameOver = false
-    @Published var currentLevel: GameLevel = .l1
-    @Published var litIndices: Set<Int> = []
+    // Game States
+    @Published var cards: [LightUpCard] = []
+    @Published var currentLevel: LightUpLevel = .L1
+    @Published var score: Int = 0
+    @Published var lives: Int = 3
+    @Published var timeRemaining: TimeInterval = 60.0
+    @Published var isPlaying: Bool = false
+    @Published var isGameOver: Bool = false
+    @Published var showLevelUpFlash: Bool = false
     
-    private var gameTimer: Timer?
-    private var tickTimer: Timer?
+    // Configurable round length (bound to Settings)
+    private var totalRoundLength: TimeInterval = 60.0
     
-    func startGame() {
-        score = 0
-        lives = 3
-        timeRemaining = 60
-        currentLevel = .l1
-        isGameOver = false
+    // Core Timers
+    private var gameTimer: AnyCancellable?
+    private var tickTimer: AnyCancellable?
+    private var elapsedSeconds: TimeInterval = 0
+    
+    // High Score Persistence
+    @AppStorage("lightitup_highscore") var highScore: Int = 0
+    
+    func startGame(roundLength: TimeInterval = 60.0) {
+        self.totalRoundLength = roundLength
+        self.timeRemaining = roundLength
+        self.score = 0
+        self.lives = 3
+        self.elapsedSeconds = 0
+        self.currentLevel = .L1
+        self.isGameOver = false
+        self.isPlaying = true
         
-        setupTimers()
-        generateLitCards()
+        setupLevel(self.currentLevel)
+        startTimers()
     }
     
-    private func setupTimers() {
-        gameTimer?.invalidate()
-        tickTimer?.invalidate()
+    private func setupLevel(_ level: LightUpLevel) {
+        // Build card array for grid size
+        self.cards = (0..<level.cardCount).map { LightUpCard(id: $0) }
+        triggerNextTick()
+    }
+    
+    private func startTimers() {
+        // Main countdown timer
+        gameTimer = Timer.publish(every: 1.0, on: .main, in: .common)
+            .autoconnect()
+            .sink { [weak self] _ in
+                self?.updateCountdown()
+            }
+    }
+    
+    private func updateCountdown() {
+        guard isPlaying else { return }
         
-        gameTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            if self.timeRemaining > 0 {
-                self.timeRemaining -= 1
-                self.updateLevelProgression()
-            } else {
-                self.endGame()
+        elapsedSeconds += 1
+        timeRemaining = max(0, totalRoundLength - elapsedSeconds)
+        
+        if timeRemaining <= 0 {
+            endGame()
+            return
+        }
+        
+        // Evaluate level progression based on elapsed time
+        let correctLevel = LightUpLevel.allCases.first { $0.durationRange.contains(elapsedSeconds) } ?? .L4
+        if correctLevel != currentLevel {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                self.currentLevel = correctLevel
+                self.showLevelUpFlash = true
+                self.setupLevel(correctLevel)
+            }
+            
+            // Auto dismissal of level-up notification overlay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                withAnimation { self.showLevelUpFlash = false }
             }
         }
-        
-        startTickTimer()
     }
     
-    private func startTickTimer() {
-        tickTimer?.invalidate()
-        tickTimer = Timer.scheduledTimer(withTimeInterval: currentLevel.interval, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            self.generateLitCards()
+    private func triggerNextTick() {
+        tickTimer?.cancel()
+        
+        // Dim all active cards on rotation tick
+        for i in 0..<cards.count {
+            cards[i].isLit = false
         }
-    }
-    
-    private func updateLevelProgression() {
-        let elapsed = 60 - timeRemaining
-        var nextLevel = GameLevel.l1
-        if elapsed > 45 { nextLevel = .l4 }
-        else if elapsed > 30 { nextLevel = .l3 }
-        else if elapsed > 15 { nextLevel = .l2 }
         
-        if nextLevel != currentLevel {
-            currentLevel = nextLevel
-            startTickTimer()
+        // Pick new random indices to light up based on level configuration
+        let activeCount = min(currentLevel.concurrentLitCards, cards.count)
+        var indicesToLight = Set<Int>()
+        
+        while indicesToLight.count < activeCount && indicesToLight.count < cards.count {
+            let randomIndex = Int.random(in: 0..<cards.count)
+            indicesToLight.insert(randomIndex)
         }
-    }
-    
-    func generateLitCards() {
-        litIndices.removeAll()
-        let count = currentLevel.gridCount
-        let target = currentLevel.activeCount
         
-        while litIndices.count < target {
-            let randomIndex = Int.random(in: 0..<count)
-            litIndices.insert(randomIndex)
+        for index in indicesToLight {
+            cards[index].isLit = true
         }
+        
+        // Re-publish tick according to current window length
+        tickTimer = Timer.publish(every: currentLevel.litDuration, on: .main, in: .common)
+            .autoconnect()
+            .sink { [weak self] _ in
+                self?.handleMissedTick()
+            }
     }
     
-    func handleCardTap(index: Int) {
-        guard !isGameOver else { return }
+    private func handleMissedTick() {
+        // Deduct a life if a lit card wasn't tapped before window timed out
+        let missedAny = cards.contains { $0.isLit }
+        if missedAny {
+            reduceLife()
+        }
+        triggerNextTick()
+    }
+    
+    func handleCardTap(_ card: LightUpCard) {
+        guard isPlaying, let index = cards.firstIndex(where: { $0.id == card.id }) else { return }
         
-        if litIndices.contains(index) {
+        if cards[index].isLit {
+            // Correct hit
             score += 10
-            litIndices.remove(index)
-            if litIndices.isEmpty { generateLitCards() }
-        } else {
-            // Apply Penalty: 3 Lives System implemented instead of standard point loss
-            lives -= 1
-            if lives <= 0 {
-                endGame()
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
+                cards[index].isLit = false
             }
+            
+            // Check if all current active cards are cleared early
+            if !cards.contains(where: { $0.isLit }) {
+                triggerNextTick()
+            }
+        } else {
+            // Incorrect click penalty
+            reduceLife()
         }
     }
     
-    private func endGame() {
-        gameTimer?.invalidate()
-        tickTimer?.invalidate()
+    private func reduceLife() {
+        withAnimation(.default) {
+            lives -= 1
+        }
+        if lives <= 0 {
+            endGame()
+        }
+    }
+    
+    func endGame() {
+        isPlaying = false
         isGameOver = true
+        gameTimer?.cancel()
+        tickTimer?.cancel()
+        
+        if score > highScore {
+            highScore = score
+        }
     }
 }

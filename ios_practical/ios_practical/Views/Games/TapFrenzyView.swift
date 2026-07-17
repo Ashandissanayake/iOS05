@@ -36,25 +36,28 @@ struct TapFrenzyView: View {
                 }
             }
             
-            Spacer()
-            
-            Button(action: {
-                viewModel.handleTap()
-            }) {
-                Circle()
-                    .fill(viewModel.isBurstActive ? Color.orange : Color.indigo)
-                    .frame(width: viewModel.timeRemaining <= 3 ? 140 : 200, height: viewModel.timeRemaining <= 3 ? 140 : 200) // Shrinking Button implementation
-                    .overlay(
-                        Text("TAP NOW")
-                            .font(.title2)
-                            .bold()
-                            .foregroundColor(.white)
-                    )
-                    .shadow(radius: 10)
+            // Moving Target: button roams the play area, repositioned every 2s by the VM
+            GeometryReader { geo in
+                Button(action: {
+                    viewModel.handleTap()
+                }) {
+                    Circle()
+                        .fill(viewModel.isBurstActive ? Color.orange : Color.indigo)
+                        .frame(width: buttonSize, height: buttonSize)
+                        .overlay(
+                            Text("TAP NOW")
+                                .font(.title2)
+                                .bold()
+                                .foregroundColor(.white)
+                        )
+                        .shadow(radius: 10)
+                }
+                .disabled(viewModel.isGameOver || viewModel.timeRemaining == 0)
+                .position(
+                    x: viewModel.targetPosition.x * geo.size.width,
+                    y: viewModel.targetPosition.y * geo.size.height
+                )
             }
-            .disabled(viewModel.isGameOver || viewModel.timeRemaining == 0)
-            
-            Spacer()
         }
         .onAppear {
             viewModel.startGame()
@@ -73,5 +76,9 @@ struct TapFrenzyView: View {
                 statsVM.saveSession(mode: .tapFrenzy, score: viewModel.score, lat: lat, lon: lon)
             }
         }
+    }
+    
+    private var buttonSize: CGFloat {
+        viewModel.timeRemaining <= 3 ? 140 : 200
     }
 }

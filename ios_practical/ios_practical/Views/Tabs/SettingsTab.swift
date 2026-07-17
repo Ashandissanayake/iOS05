@@ -1,44 +1,21 @@
 import SwiftUI
 
 struct SettingsTab: View {
-    @EnvironmentObject var statsVM: StatsVM
-    @AppStorage("notifications_enabled") private var notificationsEnabled = false
-    @State private var alertTime = Date()
-    @State private var showingClearConfirmation = false
+    @AppStorage("round_duration_setting") private var roundDuration: Double = 60.0
     
     var body: some View {
-        NavigationStack {
-            Form {
-                Section(header: Text("Push Reminders Alerts")) {
-                    Toggle("Enable Local Alerts", isOn: $notificationsEnabled)
-                        .onChange(of: notificationsEnabled) { _, newValue in
-                            if newValue { NotificationService.shared.requestPermission() }
-                            NotificationService.shared.scheduleDailyNotification(at: alertTime, enabled: newValue)
-                        }
-                    
-                    DatePicker("Daily Check-In", selection: $alertTime, displayedComponents: .hourAndMinute)
-                        .disabled(!notificationsEnabled)
-                        .onChange(of: alertTime) { _, newTime in
-                            NotificationService.shared.scheduleDailyNotification(at: newTime, enabled: notificationsEnabled)
-                        }
+        Form {
+            Section(header: Text("Game Configurations")) {
+                Picker("Round Length", selection: $roundDuration) {
+                    Text("30 Seconds").tag(30.0)
+                    Text("60 Seconds").tag(60.0)
+                    Text("90 Seconds").tag(90.0)
                 }
-                
-                Section(header: Text("Data Actions Maintenance")) {
-                    Button(role: .destructive) {
-                        showingClearConfirmation = true
-                    } label: {
-                        Text("Reset System Analytics History")
-                    }
-                }
+                .pickerStyle(.segmented)
             }
-            .navigationTitle("Settings Manager")
-            .confirmationDialog("Are you absolutely sure?", isPresented: $showingClearConfirmation, titleVisibility: .visible) {
-                Button("Delete Everything", role: .destructive) {
-                    statsVM.clearStats()
-                }
-            } message: {
-                Text("This action permanently drops database logs, scores, coordinates, and local configurations.")
-            }
+            
+            Section(footer: Text("Adjust configuration options across all available sub-game structures.")) {}
         }
+        .navigationTitle("Settings")
     }
 }
