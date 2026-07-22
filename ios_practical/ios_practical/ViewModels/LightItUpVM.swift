@@ -12,15 +12,11 @@ class LightItUpVM: ObservableObject {
     @Published var isGameOver: Bool = false
     @Published var showLevelUpFlash: Bool = false
     
-    // Configurable round length (bound to Settings)
     private var totalRoundLength: TimeInterval = 60.0
-    
-    // Core Timers
     private var gameTimer: AnyCancellable?
     private var tickTimer: AnyCancellable?
     private var elapsedSeconds: TimeInterval = 0
     
-    // High Score Persistence
     @AppStorage("lightitup_highscore") var highScore: Int = 0
     
     func startGame(roundLength: TimeInterval = 60.0) {
@@ -38,13 +34,11 @@ class LightItUpVM: ObservableObject {
     }
     
     private func setupLevel(_ level: LightUpLevel) {
-        // Build card array for grid size
         self.cards = (0..<level.cardCount).map { LightUpCard(id: $0) }
         triggerNextTick()
     }
     
     private func startTimers() {
-        // Main countdown timer
         gameTimer = Timer.publish(every: 1.0, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
@@ -63,7 +57,6 @@ class LightItUpVM: ObservableObject {
             return
         }
         
-        // Evaluate level progression based on elapsed time
         let correctLevel = LightUpLevel.allCases.first { $0.durationRange.contains(elapsedSeconds) } ?? .L4
         if correctLevel != currentLevel {
             withAnimation(.easeInOut(duration: 0.3)) {
@@ -72,7 +65,6 @@ class LightItUpVM: ObservableObject {
                 self.setupLevel(correctLevel)
             }
             
-            // Auto dismissal of level-up notification overlay
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 withAnimation { self.showLevelUpFlash = false }
             }
@@ -82,12 +74,10 @@ class LightItUpVM: ObservableObject {
     private func triggerNextTick() {
         tickTimer?.cancel()
         
-        // Dim all active cards on rotation tick
         for i in 0..<cards.count {
             cards[i].isLit = false
         }
         
-        // Pick new random indices to light up based on level configuration
         let activeCount = min(currentLevel.concurrentLitCards, cards.count)
         var indicesToLight = Set<Int>()
         
@@ -100,7 +90,6 @@ class LightItUpVM: ObservableObject {
             cards[index].isLit = true
         }
         
-        // Re-publish tick according to current window length
         tickTimer = Timer.publish(every: currentLevel.litDuration, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
@@ -111,13 +100,11 @@ class LightItUpVM: ObservableObject {
     private func handleMissedTick() {
         guard isPlaying else { return }
         
-        // Deduct a life if a lit card wasn't tapped before window timed out
         let missedAny = cards.contains { $0.isLit }
         if missedAny {
             reduceLife()
         }
         
-        // Game may have just ended inside reduceLife() — don't restart the tick loop
         guard isPlaying else { return }
         triggerNextTick()
     }
@@ -126,18 +113,14 @@ class LightItUpVM: ObservableObject {
         guard isPlaying, let index = cards.firstIndex(where: { $0.id == card.id }) else { return }
         
         if cards[index].isLit {
-            // Correct hit
             score += 10
             withAnimation(.spring(response: 0.2, dampingFraction: 0.5)) {
                 cards[index].isLit = false
             }
-            
-            // Check if all current active cards are cleared early
             if !cards.contains(where: { $0.isLit }) {
                 triggerNextTick()
             }
         } else {
-            // Incorrect click penalty
             reduceLife()
         }
     }

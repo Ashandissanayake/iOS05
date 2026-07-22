@@ -32,4 +32,23 @@ class StatsVM: ObservableObject {
     func personalBest(for mode: GameMode) -> Int {
         sessions.filter { $0.mode == mode }.map { $0.score }.max() ?? 0
     }
+    
+    // MARK: - Aggregate stats used by StatsTab
+    
+    var totalGamesPlayedAllModes: Int {
+        sessions.count
+    }
+    
+    var averageScoreAllModes: Double {
+        guard !sessions.isEmpty else { return 0 }
+        return Double(sessions.reduce(0) { $0 + $1.score }) / Double(sessions.count)
+    }
+    
+    func sessions(for mode: GameMode) -> [GameSession] {
+        sessions.filter { $0.mode == mode }
+    }
+    
+    var recentSessions: [GameSession] {
+        Array(sessions.reversed().prefix(5))
+    }
 }

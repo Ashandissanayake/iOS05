@@ -83,15 +83,14 @@ struct QuizRushView: View {
                     mode: .quizRush,
                     score: viewModel.score,
                     isNewHigh: viewModel.score > highScore,
-                    restartAction: {
+                    onPlayAgain: {
                         Task { await viewModel.loadQuestions() }
                     }
                 )
                 .onAppear {
                     if viewModel.score > highScore { highScore = viewModel.score }
-                    let lat = locationService.lastLocation?.coordinate.latitude ?? 6.9271
-                    let lon = locationService.lastLocation?.coordinate.longitude ?? 79.8612
-                    statsVM.saveSession(mode: .quizRush, score: viewModel.score, lat: lat, lon: lon)
+                    let coord = locationService.snapshotCoordinate()
+                    statsVM.saveSession(mode: .quizRush, score: viewModel.score, lat: coord.latitude, lon: coord.longitude)
                 }
             }
         }

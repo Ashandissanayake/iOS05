@@ -5,10 +5,11 @@ struct TapFrenzyView: View {
     @StateObject private var viewModel = TapFrenzyVM()
     @EnvironmentObject var statsVM: StatsVM
     @EnvironmentObject var locationService: LocationService
+    @Environment(\.dismiss) var dismiss
     @AppStorage("tap_frenzy_high") var highScore = 0
     
     var body: some View {
-        VStack(spacing: 30) {
+        VStack(spacing: 20) {
             HStack {
                 Text("Score: \(viewModel.score)")
                     .font(.title)
@@ -18,7 +19,8 @@ struct TapFrenzyView: View {
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
-            .padding()
+            .padding(.horizontal)
+            .padding(.top)
             
             Text("\(viewModel.timeRemaining)s")
                 .font(.system(size: 60, weight: .heavy, design: .monospaced))
@@ -28,24 +30,36 @@ struct TapFrenzyView: View {
                 Text("Multiplier: x\(viewModel.multiplier)")
                     .font(.headline)
                     .foregroundColor(.indigo)
+                
                 if viewModel.isBurstActive {
                     Text("🔥 BURST ACTIVE MODE: DOUBLE POINTS")
                         .font(.caption)
                         .bold()
                         .foregroundColor(.orange)
+                } else if viewModel.trapState == .bonus {
+                    Text("💚 GREEN TRAP: BONUS POINTS")
+                        .font(.caption)
+                        .bold()
+                        .foregroundColor(.green)
+                } else if viewModel.trapState == .penalty {
+                    Text("⚠️ GREY TRAP: PENALTY")
+                        .font(.caption)
+                        .bold()
+                        .foregroundColor(.gray)
                 }
             }
             
-            // Moving Target: button roams the play area, repositioned every 2s by the VM
             GeometryReader { geo in
+                let buttonSize: CGFloat = viewModel.timeRemaining <= 3 ? 140 : 200
+                
                 Button(action: {
                     viewModel.handleTap()
                 }) {
                     Circle()
-                        .fill(viewModel.isBurstActive ? Color.orange : Color.indigo)
+                        .fill(viewModel.buttonColor)
                         .frame(width: buttonSize, height: buttonSize)
                         .overlay(
-                            Text("TAP NOW")
+                            Text(viewModel.buttonLabel)
                                 .font(.title2)
                                 .bold()
                                 .foregroundColor(.white)
@@ -54,10 +68,11 @@ struct TapFrenzyView: View {
                 }
                 .disabled(viewModel.isGameOver || viewModel.timeRemaining == 0)
                 .position(
-                    x: viewModel.targetPosition.x * geo.size.width,
-                    y: viewModel.targetPosition.y * geo.size.height
+                    x: geo.size.width * viewModel.targetPosition.x,
+                    y: geo.size.height * viewModel.targetPosition.y
                 )
             }
+            .padding(.bottom)
         }
         .onAppear {
             viewModel.startGame()
@@ -67,18 +82,29 @@ struct TapFrenzyView: View {
                 mode: .tapFrenzy,
                 score: viewModel.score,
                 isNewHigh: viewModel.score > highScore,
-                restartAction: { viewModel.startGame() }
+                onPlayAgain: {
+                    viewModel.startGame()
+                },
+                onExit: {
+                    viewModel.isGameOver = false
+                    dismiss()
+                }
             )
             .onAppear {
-                if viewModel.score > highScore { highScore = viewModel.score }
-                let lat = locationService.lastLocation?.coordinate.latitude ?? 6.9271
-                let lon = locationService.lastLocation?.coordinate.longitude ?? 79.8612
-                statsVM.saveSession(mode: .tapFrenzy, score: viewModel.score, lat: lat, lon: lon)
+                if viewModel.score > highScore {
+                    highScore = viewModel.score
+                }
+                
+                // Get the coordinate from your location service
+                let coord = locationService.snapshotCoordinate()
+                
+                statsVM.saveSession(
+                    mode: .tapFrenzy,
+                    score: viewModel.score,
+                    lat: coord.latitude,
+                    lon: coord.longitude
+                )
             }
         }
-    }
-    
-    private var buttonSize: CGFloat {
-        viewModel.timeRemaining <= 3 ? 140 : 200
     }
 }

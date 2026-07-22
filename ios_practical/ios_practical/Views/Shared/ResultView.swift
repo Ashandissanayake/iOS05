@@ -1,73 +1,69 @@
 import SwiftUI
 
 struct ResultView: View {
-    @Environment(\.dismiss) var dismiss
+    @Environment(\.dismiss) private var dismiss
+    
     let mode: GameMode
     let score: Int
     let isNewHigh: Bool
-    let restartAction: () -> Void
+    var onPlayAgain: () -> Void
+    var onExit: () -> Void = {}
     
-    // One line ShareLink content template string as explicitly requested in requirements
-    var shareText: String {
-        "I just scored \(score) points playing \(mode.rawValue) on PlayHub! Beat that score if you can!"
+    private var shareText: String {
+        "I just scored \(score) on \(mode.rawValue) — beat that!"
     }
     
     var body: some View {
-        VStack(spacing: 30) {
-            Spacer()
+        VStack(spacing: 25) {
+            Text("GAME OVER")
+                .font(.largeTitle).bold()
+                .foregroundColor(.red)
             
-            Text("Game Over").font(.system(size: 45, weight: .black)).foregroundColor(.red)
+            ScoreBadge(mode: mode, score: score, isNewHigh: isNewHigh)
             
-            VStack(spacing: 10) {
-                Text("Final Compiled Score").font(.headline).foregroundColor(.secondary)
-                Text("\(score)")
-                    .font(.system(size: 80, weight: .heavy, design: .rounded))
-                    .foregroundColor(.primary)
+            VStack(spacing: 12) {
+                Button(action: {
+                    dismiss()
+                    onPlayAgain()
+                }) {
+                    Text("Play Again")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue)
+                        .cornerRadius(10)
+                }
+                
+                ShareLink(item: shareText) {
+                    Label("Share Score", systemImage: "square.and.arrow.up")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.green)
+                        .cornerRadius(10)
+                }
+                
+                Button(action: {
+                    dismiss()
+                    onExit()
+                }) {
+                    Text("Exit to Menu")
+                        .font(.headline)
+                        .foregroundColor(.gray)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.clear)
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.gray, lineWidth: 1))
+                }
             }
-            
-            if isNewHigh {
-                Text("🎉 NEW MODE HIGH RECORD!")
-                    .font(.headline)
-                    .foregroundColor(.green)
-                    .padding()
-                    .background(Color.green.opacity(0.2))
-                    .cornerRadius(10)
-            }
-            
-            Spacer()
-            
-            // Native ShareLink initialization engine layout
-            ShareLink(item: shareText) {
-                Label("Share Score Metrics", systemImage: "square.and.arrow.up")
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-            }
-            .padding(.horizontal)
-            
-            Button(action: {
-                dismiss()
-                restartAction()
-            }) {
-                Text("Play Again Loop")
-                    .bold()
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.green)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-            }
-            .padding(.horizontal)
-            
-            Button("Return to Home Core Shell") {
-                dismiss()
-            }
-            .foregroundColor(.secondary)
-            
-            Spacer()
+            .padding(.horizontal, 30)
         }
-        .padding()
+        .padding(40)
+        .background(Color(red: 0.15, green: 0.17, blue: 0.22))
+        .cornerRadius(20)
+        .shadow(radius: 20)
+        .padding(30)
     }
 }

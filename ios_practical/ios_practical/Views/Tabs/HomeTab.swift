@@ -2,147 +2,125 @@ import SwiftUI
 
 struct HomeTab: View {
     @EnvironmentObject var statsVM: StatsVM
+    @EnvironmentObject var locationService: LocationService
     
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(red: 0.07, green: 0.08, blue: 0.12)
-                    .ignoresSafeArea()
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.24, green: 0.12, blue: 0.48),
+                        Color(red: 0.05, green: 0.02, blue: 0.15),
+                        .black
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
                 
-                VStack(spacing: 28) {
-                    // Glowing header icon
-                    ZStack {
-                        Circle()
-                            .fill(
-                                RadialGradient(
-                                    colors: [Color.purple.opacity(0.6), Color.pink.opacity(0.3), .clear],
-                                    center: .center, startRadius: 5, endRadius: 90
-                                )
-                            )
-                            .frame(width: 160, height: 160)
-                            .blur(radius: 10)
-                        
+                ScrollView {
+                    VStack(spacing: 20) {
                         Image(systemName: "gamecontroller.fill")
                             .font(.system(size: 56))
                             .foregroundStyle(
-                                LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
+                                LinearGradient(
+                                    colors: [.pink, .purple, .cyan],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
+                            .padding(.top, 24)
+                        
+                        Text("Game Center")
+                            .font(.largeTitle)
+                            .bold()
+                            .foregroundColor(.white)
+                        
+                        HStack(spacing: 12) {
+                            ScoreBadgeView(title: "Tap", score: statsVM.personalBest(for: .tapFrenzy))
+                            ScoreBadgeView(title: "Light", score: statsVM.personalBest(for: .lightItUp))
+                            ScoreBadgeView(title: "Quiz", score: statsVM.personalBest(for: .quizRush))
+                        }
+                        .padding(.horizontal)
+                        
+                        VStack(spacing: 16) {
+                            NavigationLink(destination: TapFrenzyView()) {
+                                HomeMenuRow(title: "Tap Frenzy", subtitle: "Tap as fast as you can!", systemImage: "hand.tap.fill", color: .indigo)
+                            }
+                            
+                            NavigationLink(destination: LightItUpView()) {
+                                HomeMenuRow(title: "Light It Up", subtitle: "Test your spatial reaction times", systemImage: "square.grid.3x3.topleft.filled", color: .teal)
+                            }
+                            
+                            NavigationLink(destination: QuizRushView()) {
+                                HomeMenuRow(title: "Quiz Rush", subtitle: "10 quick trivia questions", systemImage: "questionmark.bubble.fill", color: .purple)
+                            }
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+                        
+                        Spacer(minLength: 40)
                     }
-                    .padding(.top, 20)
-                    
-                    Text("Game Center")
-                        .font(.system(size: 34, weight: .black))
-                        .foregroundColor(.white)
-                    
-                    // Personal Best row
-                    HStack(spacing: 12) {
-                        ForEach(GameMode.allCases) { mode in
-                            PersonalBestBadge(
-                                label: shortLabel(for: mode),
-                                score: statsVM.personalBest(for: mode)
-                            )
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    
-                    // Menu rows
-                    VStack(spacing: 16) {
-                        NavigationLink(destination: TapFrenzyView()) {
-                            GameMenuRow(mode: .tapFrenzy)
-                        }
-                        NavigationLink(destination: LightItUpView()) {
-                            GameMenuRow(mode: .lightItUp)
-                        }
-                        NavigationLink(destination: QuizRushView()) {
-                            GameMenuRow(mode: .quizRush)
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    
-                    Spacer()
                 }
-                .padding(.top, 10)
             }
+            .navigationBarHidden(true)
         }
-    }
-    
-    private func shortLabel(for mode: GameMode) -> String {
-        switch mode {
-        case .tapFrenzy: return "Tap"
-        case .lightItUp: return "Light"
-        case .quizRush: return "Quiz"
+        .onAppear {
+            locationService.requestPermission()
         }
     }
 }
 
-// MARK: - Personal Best badge
-struct PersonalBestBadge: View {
-    let label: String
+private struct ScoreBadgeView: View {
+    let title: String
     let score: Int
     
     var body: some View {
-        VStack(spacing: 4) {
-            Text(label)
+        VStack(spacing: 6) {
+            Text(title)
                 .font(.caption)
-                .foregroundColor(.white.opacity(0.7))
+                .foregroundColor(.white.opacity(0.6))
             Text("\(score)")
-                .font(.title3).bold()
+                .font(.title3)
+                .bold()
                 .foregroundColor(.white)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 14)
         .background(Color.white.opacity(0.08))
-        .cornerRadius(14)
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(Color.white.opacity(0.15), lineWidth: 1)
-        )
+        .cornerRadius(16)
     }
 }
 
-// MARK: - Game menu row
-struct GameMenuRow: View {
-    let mode: GameMode
-    
-    private var accentColor: Color {
-        switch mode {
-        case .tapFrenzy: return .orange
-        case .lightItUp: return .pink
-        case .quizRush: return .cyan
-        }
-    }
+struct HomeMenuRow: View {
+    let title: String
+    let subtitle: String
+    let systemImage: String
+    let color: Color
     
     var body: some View {
-        HStack(spacing: 16) {
-            Image(systemName: mode.iconName)
-                .font(.system(size: 18, weight: .bold))
+        HStack(spacing: 20) {
+            Image(systemName: systemImage)
+                .font(.title)
                 .foregroundColor(.white)
-                .frame(width: 40, height: 40)
-                .background(accentColor.opacity(0.3))
-                .clipShape(Circle())
+                .frame(width: 60, height: 60)
+                .background(color)
+                .clipShape(RoundedRectangle(cornerRadius: 15))
             
-            Text(mode.rawValue)
-                .font(.title3).bold()
-                .foregroundColor(.white)
-            
+            VStack(alignment: .leading) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundColor(.white)
+                Text(subtitle)
+                    .font(.subheadline)
+                    .foregroundColor(.white.opacity(0.6))
+            }
             Spacer()
-            
-            Image(systemName: "chevron.right.circle.fill")
-                .font(.system(size: 22))
-                .foregroundColor(.white.opacity(0.8))
+            Image(systemName: "chevron.right")
+                .foregroundColor(.white.opacity(0.4))
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 18)
-        .background(Color.white.opacity(0.06))
-        .cornerRadius(18)
-        .overlay(
-            RoundedRectangle(cornerRadius: 18)
-                .stroke(accentColor.opacity(0.6), lineWidth: 1.5)
-        )
+        .padding()
+        .background(Color.white.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
-}
-
-#Preview {
-    HomeTab()
-        .environmentObject(StatsVM())
 }
